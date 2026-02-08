@@ -16,7 +16,6 @@ from plotly.subplots import make_subplots
 import os
 import sys
 
-# Add src to path
 sys.path.insert(0, '.')
 
 from aeon.segmentation import find_dominant_window_sizes
@@ -30,7 +29,6 @@ from src.detectors import (
     NearestNeighborDetector
 )
 
-# Detection methods
 DETECTORS = {
     'Clustering (Best)': ClusteringDetector,
     'Nearest Neighbor': NearestNeighborDetector,
@@ -40,7 +38,6 @@ DETECTORS = {
     'Regression': RegressionDetector,
 }
 
-# Set page config
 st.set_page_config(
     page_title="Time Series Anomaly Detection", 
     layout="wide",
@@ -133,7 +130,6 @@ def read_series_from_zip(file_name, file_list, locations, zf, folder_in_zip):
 
 def run_detection(data, test_start, detector_name):
     """Run anomaly detection using the selected method."""
-    # Get window size
     try:
         period = find_dominant_window_sizes(data[:test_start])
         window_size = int(period) if not isinstance(period, (list, np.ndarray)) else int(period[0])
@@ -198,8 +194,6 @@ else:
         df = pd.read_csv(uploaded_file, header=None)
         data = df.iloc[:, 0].values.flatten()
         file_id = uploaded_file.name.split('.')[0]
-        
-        # Let user set test split
         test_start = st.sidebar.slider(
             "Train/Test Split Point", 
             int(len(data) * 0.1), 
@@ -224,7 +218,6 @@ run_detection_btn = st.sidebar.button("Run Detection", type="primary", use_conta
 
 
 if data is not None:
-    # Info columns
     col1, col2, col3, col4 = st.columns(4)
     with col1:
         st.metric("Series", file_id)
@@ -258,7 +251,6 @@ if data is not None:
     results = st.session_state.detection_results
     
     if results:
-        # Two-panel chart - no subplot titles to avoid overlap
         fig = make_subplots(
             rows=2, cols=1,
             shared_xaxes=True,
@@ -284,7 +276,7 @@ if data is not None:
             name='Test'
         ), row=1, col=1)
         
-        # Actual anomaly (if known)
+        # Actual anomaly 
         if anomaly[0] > 0:
             fig.add_trace(go.Scatter(
                 x=np.arange(anomaly[0], anomaly[1]),
@@ -306,17 +298,14 @@ if data is not None:
         )
         
         # Anomaly scores - align x-axis with data
-        # score[i] corresponds to the window ending at data[i + window_size - 1]
-        # So we offset x by (window_size - 1) to align correctly
         score = results['score']
         window_size = results['window_size']
         score_viz = score.copy()
         
-        # Hide training region scores (same as notebook: score[:test_start] = np.nan)
+        # Hide training region scores
         score_viz[:test_start] = np.nan
         
         # X-axis: score indices shifted by window offset to align with data
-        # score[0] -> data point at window_size-1, score[i] -> data point at i + window_size - 1
         score_x = np.arange(len(score_viz)) + (window_size - 1)
         
         fig.add_trace(go.Scatter(

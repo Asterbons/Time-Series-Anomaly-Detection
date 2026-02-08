@@ -15,7 +15,6 @@ from datetime import datetime
 import numpy as np
 import pandas as pd
 
-# Add src to path for imports
 sys.path.insert(0, '.')
 
 from aeon.segmentation import find_dominant_window_sizes
@@ -32,7 +31,6 @@ from src.detectors import (
 )
 
 
-# Map method names to detector classes
 DETECTORS = {
     'clustering': ClusteringDetector,
     'classification': ClassificationDetector,
@@ -62,7 +60,7 @@ def run_detection(method: str, data_dir: str = ".",
     """
     import matplotlib
     if not show_plots:
-        matplotlib.use('Agg')  # Non-interactive backend for saving
+        matplotlib.use('Agg')
     import matplotlib.pyplot as plt
     
     zip_path = os.path.join(data_dir, "phase_1.zip")
@@ -349,15 +347,36 @@ Outputs (saved to results/<method>_<timestamp>/):
     save_plots = args.save_plots and not args.no_save_plots
     
     try:
-        submission = run_detection(
-            method=args.method,
-            data_dir=args.data_dir,
-            output_dir=args.output_dir,
-            save_plots=save_plots,
-            show_plots=args.show_plots
-        )
-        print("\nPredictions preview:")
-        print(submission.head(10).to_string(index=False))
+        if args.method == 'all':
+            all_submissions = {}
+            for method_name in DETECTORS.keys():
+                print(f"\n{'#'*60}")
+                print(f"# Running individual method: {method_name}")
+                print(f"{'#'*60}")
+                submission = run_detection(
+                    method=method_name,
+                    data_dir=args.data_dir,
+                    output_dir=args.output_dir,
+                    save_plots=save_plots,
+                    show_plots=args.show_plots
+                )
+                all_submissions[method_name] = submission
+            
+            print(f"\n{'='*60}")
+            print(f"All {len(DETECTORS)} methods completed!")
+            print(f"{'='*60}")
+            for method_name in all_submissions:
+                print(f"  - {method_name}")
+        else:
+            submission = run_detection(
+                method=args.method,
+                data_dir=args.data_dir,
+                output_dir=args.output_dir,
+                save_plots=save_plots,
+                show_plots=args.show_plots
+            )
+            print("\nPredictions preview:")
+            print(submission.head(10).to_string(index=False))
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
         import traceback

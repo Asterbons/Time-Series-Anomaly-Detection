@@ -88,7 +88,7 @@ class ClassificationDetector(BaseDetector):
         # Normalize and combine scores
         normalized_scores = []
         for s in all_scores:
-            s_norm = (s - np.min(s)) / (np.max(s) - np.min(s) + 1e-10)
+            s_norm = self._normalize_scores(s)
             normalized_scores.append(s_norm)
         
         combined = np.mean(normalized_scores, axis=0)

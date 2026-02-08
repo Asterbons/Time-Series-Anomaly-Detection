@@ -3,7 +3,7 @@
 import numpy as np
 from sklearn.cluster import KMeans
 from sklearn.neighbors import LocalOutlierFactor, NearestNeighbors
-from sklearn.preprocessing import RobustScaler, MinMaxScaler
+from sklearn.preprocessing import RobustScaler
 from scipy.ndimage import gaussian_filter1d
 import warnings
 
@@ -76,12 +76,11 @@ class ClusteringDetector(BaseDetector):
         
         # Robust Combination
         normalized_scores = []
-        score_scaler = MinMaxScaler()
         
         for s in all_scores:
             cap = np.percentile(s, 99)
             s_clipped = np.clip(s, a_min=None, a_max=cap)
-            s_norm = score_scaler.fit_transform(s_clipped.reshape(-1, 1)).flatten()
+            s_norm = self._normalize_scores(s_clipped)
             normalized_scores.append(s_norm)
         
         combined = np.mean(normalized_scores, axis=0)

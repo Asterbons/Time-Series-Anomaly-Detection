@@ -42,10 +42,6 @@ class BaseDetector(ABC):
         min_val = np.min(scores)
         max_val = np.max(scores)
         if max_val - min_val > 0:
-            return (scores - min_val) / (max_val - min_val)
+            return (scores - min_val) / (max_val - min_val + 1e-10)
         return scores
     
-    def _zero_training_region(self, scores: np.ndarray, test_start: int) -> np.ndarray:
-        """Set training region scores to zero."""
-        scores[:test_start] = 0
-        return scores

@@ -31,12 +31,12 @@ Each time series contains:
 
 | Method | Description | Score | Best For |
 |--------|-------------|-------|----------|
-| **Clustering** | LOF, KMeans, kNN ensemble | **2.27** | General use |
-| **Nearest Neighbor** | kNN distance-based | 4.0 | Local anomalies |
-| **Forecasting** | Ridge regression + LOF + kNN | 5.5 | Periodic data |
-| **Classification** | Isolation Forest, SVM, LOF | ~8.0 | Outlier detection |
-| **Statistics** | KDE, Mahalanobis, Z-score, IQR | 9.7 | Simple patterns |
-| **Regression** | Gradient Boosting residuals | 10.0 | Trend anomalies |
+| **Clustering** | LOF, KMeans, kNN ensemble | **3.5** | General use |
+| **Nearest Neighbor** | kNN distance-based | 5.5 | Local anomalies |
+| **Forecasting** | Ridge regression + LOF + kNN | 7.4 | Periodic data |
+| **Classification** | Isolation Forest, SVM, LOF | 63.3 | Outlier detection |
+| **Statistics** | KDE, Mahalanobis, Z-score, IQR | 13.2 | Simple patterns |
+| **Regression** | Gradient Boosting residuals | 11.9 | Trend anomalies |
 
 *Lower score = better. Score is mean relative error (%) across 30 datasets.*
 
