@@ -6,11 +6,13 @@ This script runs anomaly detection on time series data using various methods.
 Usage:
     python main.py --method clustering
     python main.py --method all --save-plots
+    python main.py --method clustering --limit 10
 """
 
 import argparse
 import sys
 import os
+import time
 from datetime import datetime
 import numpy as np
 import pandas as pd
@@ -44,7 +46,8 @@ DETECTORS = {
 def run_detection(method: str, data_dir: str = ".", 
                   output_dir: str = "results",
                   save_plots: bool = True,
-                  show_plots: bool = False) -> pd.DataFrame:
+                  show_plots: bool = False,
+                  limit: int = None) -> pd.DataFrame:
     """
     Run anomaly detection using the specified method.
     
@@ -54,6 +57,7 @@ def run_detection(method: str, data_dir: str = ".",
         output_dir: Directory to save results, scores, and plots
         save_plots: Whether to save visualization plots
         show_plots: Whether to display plots interactively
+        limit: Maximum number of datasets to process (None for all)
         
     Returns:
         DataFrame with predictions
@@ -78,6 +82,9 @@ def run_detection(method: str, data_dir: str = ".",
     
     print(f"\nOutput directory: {run_dir}")
     
+    # Start timing
+    start_time = time.time()
+    
     # Load dataset
     file_list, locations, zf, folder_in_zip = load_dataset(zip_path, labels_path)
     
@@ -99,9 +106,17 @@ def run_detection(method: str, data_dir: str = ".",
     print(f"Running anomaly detection with method: {method}")
     print(f"{'='*60}\n")
     
+    processed_count = 0
     for file in file_list:
         if "Anomaly" not in str(file):
             continue
+        
+        # Check if limit reached
+        if limit is not None and processed_count >= limit:
+            print(f"\nLimit of {limit} datasets reached. Stopping.")
+            break
+        
+        processed_count += 1
             
         file_name = file.split('.')[0]
         name, test_start, data, anomaly = read_series(file, locations, zf, folder_in_zip)
@@ -228,11 +243,16 @@ def run_detection(method: str, data_dir: str = ".",
             else:
                 plt.close()
     
+    # Calculate elapsed time
+    elapsed_time = time.time() - start_time
+    minutes, seconds = divmod(elapsed_time, 60)
+    
     # Calculate final score
     final_score = (total_score / len(locations)) * 100
     
     print(f"\n{'='*60}")
     print(f"Final Score: {final_score:.2f}")
+    print(f"Time Elapsed: {int(minutes)}m {seconds:.1f}s")
     print(f"{'='*60}\n")
     
     # Save predictions
@@ -252,6 +272,7 @@ def run_detection(method: str, data_dir: str = ".",
         'method': method,
         'timestamp': timestamp,
         'final_score': final_score,
+        'elapsed_time_seconds': round(elapsed_time, 2),
         'num_files': len(ids),
         'mean_error': results_df['error'].mean() if results_df['error'].notna().any() else None
     }
@@ -342,6 +363,13 @@ Outputs (saved to results/<method>_<timestamp>/):
         help='Display plots interactively'
     )
     
+    parser.add_argument(
+        '--limit', '-l',
+        type=int,
+        default=None,
+        help='Limit processing to first N datasets (default: all)'
+    )
+    
     args = parser.parse_args()
     
     save_plots = args.save_plots and not args.no_save_plots
@@ -358,13 +386,15 @@ Outputs (saved to results/<method>_<timestamp>/):
                     data_dir=args.data_dir,
                     output_dir=args.output_dir,
                     save_plots=save_plots,
-                    show_plots=args.show_plots
+                    show_plots=args.show_plots,
+                    limit=args.limit
                 )
                 all_submissions[method_name] = submission
             
             print(f"\n{'='*60}")
             print(f"All {len(DETECTORS)} methods completed!")
             print(f"{'='*60}")
+            print("\nTiming Summary:")
             for method_name in all_submissions:
                 print(f"  - {method_name}")
         else:
@@ -373,7 +403,8 @@ Outputs (saved to results/<method>_<timestamp>/):
                 data_dir=args.data_dir,
                 output_dir=args.output_dir,
                 save_plots=save_plots,
-                show_plots=args.show_plots
+                show_plots=args.show_plots,
+                limit=args.limit
             )
             print("\nPredictions preview:")
             print(submission.head(10).to_string(index=False))

@@ -1,11 +1,11 @@
 """
-Compare Anomaly Detection Methods
+Compare Anomaly Detection Methods by Execution Time
 
-This script reads results from all method folders and creates comparison visualizations.
+This script reads results from all method folders and creates timing comparison visualizations.
 
 Usage:
-    python compare_methods.py
-    python compare_methods.py --results-dir results
+    python scripts/timing_visualizer.py
+    python scripts/timing_visualizer.py --results-dir results
 """
 
 import os
@@ -54,7 +54,15 @@ def find_latest_results(results_dir: str) -> dict:
     return latest
 
 
-def create_comparison_chart(results_dir: str = "results", output_file: str = None):
+def format_time(seconds: float) -> str:
+    """Format seconds into a readable string."""
+    if seconds < 60:
+        return f"{seconds:.1f}s"
+    minutes, secs = divmod(seconds, 60)
+    return f"{int(minutes)}m {secs:.1f}s"
+
+
+def create_timing_chart(results_dir: str = "results", output_file: str = None):
     
     latest_results = find_latest_results(results_dir)
     
@@ -64,25 +72,26 @@ def create_comparison_chart(results_dir: str = "results", output_file: str = Non
     
     # Parse all summaries
     methods = []
-    scores = []
+    times = []
     
     for method, folder_path in sorted(latest_results.items()):
         summary_path = os.path.join(folder_path, 'summary.txt')
         metrics = parse_summary(summary_path)
         
+        elapsed_time = metrics.get('elapsed_time_seconds', 0)
         methods.append(method.replace('_', ' ').title())
-        scores.append(metrics.get('final_score', 0))
+        times.append(elapsed_time)
         
-        print(f"{method}: score={metrics.get('final_score', 'N/A'):.2f}")
+        print(f"{method}: {format_time(elapsed_time)}")
     
-    # Sort by score 
-    sorted_indices = np.argsort(scores)
+    # Sort by time (fastest first at top)
+    sorted_indices = np.argsort(times)
     methods = [methods[i] for i in sorted_indices]
-    scores = [scores[i] for i in sorted_indices]
+    times = [times[i] for i in sorted_indices]
     methods = methods[::-1]
-    scores = scores[::-1]
+    times = times[::-1]
     
-    # Create color gradient from green (best) to red (worst)
+    # Create color gradient from green (fastest) to red (slowest)
     n = len(methods)
     colors = []
     for i in range(n):
@@ -102,15 +111,15 @@ def create_comparison_chart(results_dir: str = "results", output_file: str = Non
     fig, ax = plt.subplots(figsize=(12, max(6, len(methods) * 0.8)))
     
     y_positions = np.arange(len(methods))
-    bars = ax.barh(y_positions, scores, color=colors, edgecolor='black', linewidth=1.5, height=0.7)
+    bars = ax.barh(y_positions, times, color=colors, edgecolor='black', linewidth=1.5, height=0.7)
     
     ax.set_yticks(y_positions)
     ax.set_yticklabels(methods, fontsize=12, fontweight='bold')
     
-    # Add score labels on bars
-    for bar, score in zip(bars, scores):
+    # Add time labels on bars
+    for bar, time_val in zip(bars, times):
         width = bar.get_width()
-        ax.annotate(f'{score:.1f}',
+        ax.annotate(format_time(time_val),
                     xy=(width, bar.get_y() + bar.get_height() / 2),
                     xytext=(5, 0),
                     textcoords="offset points",
@@ -118,9 +127,9 @@ def create_comparison_chart(results_dir: str = "results", output_file: str = Non
                     fontsize=12, fontweight='bold')
     
     # Styling
-    ax.set_xlabel('Final Score (lower is better)', fontsize=14, fontweight='bold')
-    ax.set_title('Method Comparison by Score', fontsize=16, fontweight='bold', pad=20)
-    ax.set_xlim(0, max(scores) * 1.15)
+    ax.set_xlabel('Execution Time (seconds)', fontsize=14, fontweight='bold')
+    ax.set_title('Method Comparison by Execution Time', fontsize=16, fontweight='bold', pad=20)
+    ax.set_xlim(0, max(times) * 1.2)
     
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
@@ -130,22 +139,25 @@ def create_comparison_chart(results_dir: str = "results", output_file: str = Non
     plt.tight_layout()
     
     if output_file is None:
-        output_file = os.path.join(results_dir, 'methods_comparison.png')
+        os.makedirs('assets', exist_ok=True)
+        output_file = os.path.join('assets', 'timing_comparison.png')
     
     plt.savefig(output_file, dpi=150, bbox_inches='tight', facecolor='white')
-    print(f"\nComparison chart saved to: {output_file}")
+    print(f"\nTiming chart saved to: {output_file}")
     
     plt.show()
     
     print("\n" + "="*50)
     print("SUMMARY")
     print("="*50)
-    best_method = methods[-1]  # Best is now at top (last in reversed list)
-    print(f"Best Method: {best_method} (Score: {scores[-1]:.2f})")
+    fastest_method = methods[-1]
+    slowest_method = methods[0]
+    print(f"Fastest Method: {fastest_method} ({format_time(times[-1])})")
+    print(f"Slowest Method: {slowest_method} ({format_time(times[0])})")
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Compare anomaly detection methods')
+    parser = argparse.ArgumentParser(description='Compare anomaly detection methods by execution time')
     parser.add_argument('--results-dir', '-r', type=str, default='results',
                         help='Directory containing method results (default: results)')
     parser.add_argument('--output', '-o', type=str, default=None,
@@ -153,7 +165,7 @@ def main():
     
     args = parser.parse_args()
     
-    create_comparison_chart(args.results_dir, args.output)
+    create_timing_chart(args.results_dir, args.output)
 
 
 if __name__ == '__main__':

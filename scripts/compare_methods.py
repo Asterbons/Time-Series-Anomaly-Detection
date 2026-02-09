@@ -130,32 +130,22 @@ def generate_comparison_chart(scores: dict, output_path: str = 'assets/method_co
 
 def main():
     parser = argparse.ArgumentParser(description='Compare detector methods')
-    parser.add_argument('--run-all', action='store_true',
-                        help='Run all methods to get fresh scores (takes ~10 min)')
+    parser.add_argument('--results-dir', '-r', type=str, default='results',
+                        help='Directory containing method results')
     parser.add_argument('--output', '-o', type=str, default='assets/method_comparison.png',
                         help='Output file path')
     
     args = parser.parse_args()
     
-    if args.run_all:
-        print("Running all detection methods...")
-        scores = run_all_methods()
-        print("\nScores:")
-        for method, score in sorted(scores.items(), key=lambda x: x[1]):
-            print(f"  {method}: {score:.2f}%")
-    else:
-        # Use pre-computed scores from previous runs
-        scores = {
-            'Clustering': 2.27,
-            'Nearest Neighbor': 4.0,
-            'Forecasting': 5.5,
-            'Classification': 8.0,
-            'Statistics': 9.7,
-            'Regression': 10.0,
-        }
-        print("Using pre-computed scores. Use --run-all to recalculate.")
+    # Run all detection methods using main.py
+    print("Running all detection methods...")
+    import subprocess
+    subprocess.run([sys.executable, 'main.py', '--method', 'all'], check=True)
     
-    generate_comparison_chart(scores, args.output)
+    # Visualize results using results_visualizer
+    print("\nGenerating comparison visualization...")
+    from scripts.results_visualizer import create_comparison_chart
+    create_comparison_chart(args.results_dir, args.output)
 
 
 if __name__ == '__main__':

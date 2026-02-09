@@ -41,7 +41,7 @@ Each time series contains:
 *Lower score = better. Score is mean relative error (%) across 30 datasets.*
 
 <p align="center">
-  <img src="assets/method_comparison.png" alt="Method Comparison Chart" width="700"/>
+  <img src="assets/methods_comparison.png" alt="Methods Comparison Chart" width="700"/>
 </p>
 
 ---
