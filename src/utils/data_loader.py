@@ -64,7 +64,8 @@ def sliding_window(a: np.ndarray, window: int) -> np.ndarray:
 
 def load_dataset(zip_path: str = "phase_1.zip", 
                  labels_path: str = "labels.csv",
-                 folder_in_zip: str = "phase_1/") -> tuple:
+                 folder_in_zip: str = "phase_1/",
+                 limit: int = None) -> tuple:
     """
     Load the complete anomaly detection dataset.
     
@@ -72,6 +73,7 @@ def load_dataset(zip_path: str = "phase_1.zip",
         zip_path: Path to the ZIP file containing time series
         labels_path: Path to the CSV file with anomaly labels
         folder_in_zip: Path prefix inside the ZIP
+        limit: Maximum number of datasets to load (None for all)
         
     Returns:
         Tuple of (file_list, locations, zf, folder_in_zip)
@@ -91,5 +93,9 @@ def load_dataset(zip_path: str = "phase_1.zip",
            and fnmatch.fnmatch(name, "*.csv")
            and not name.endswith("labels.csv")
     ])
+    
+    # Apply limit if specified
+    if limit is not None:
+        file_list = file_list[:limit]
     
     return file_list, locations, zf, folder_in_zip

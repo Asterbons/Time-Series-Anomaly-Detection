@@ -47,7 +47,8 @@ def run_detection(method: str, data_dir: str = ".",
                   output_dir: str = "results",
                   save_plots: bool = True,
                   show_plots: bool = False,
-                  limit: int = None) -> pd.DataFrame:
+                  limit: int = None,
+                  save_results: bool = True) -> pd.DataFrame:
     """
     Run anomaly detection using the specified method.
     
@@ -58,6 +59,7 @@ def run_detection(method: str, data_dir: str = ".",
         save_plots: Whether to save visualization plots
         show_plots: Whether to display plots interactively
         limit: Maximum number of datasets to process (None for all)
+        save_results: Whether to save results to disk (default: True)
         
     Returns:
         DataFrame with predictions
@@ -76,17 +78,22 @@ def run_detection(method: str, data_dir: str = ".",
     plots_dir = os.path.join(run_dir, "plots")
     scores_dir = os.path.join(run_dir, "scores")
     
-    os.makedirs(run_dir, exist_ok=True)
-    os.makedirs(plots_dir, exist_ok=True)
-    os.makedirs(scores_dir, exist_ok=True)
-    
-    print(f"\nOutput directory: {run_dir}")
+    if save_results:
+        os.makedirs(run_dir, exist_ok=True)
+        os.makedirs(plots_dir, exist_ok=True)
+        os.makedirs(scores_dir, exist_ok=True)
+        print(f"\nOutput directory: {run_dir}")
+    else:
+        print("\nRunning without saving results (--save 0)")
     
     # Start timing
     start_time = time.time()
     
     # Load dataset
-    file_list, locations, zf, folder_in_zip = load_dataset(zip_path, labels_path)
+    file_list, locations, zf, folder_in_zip = load_dataset(zip_path, labels_path, limit=limit)
+    
+    if limit is not None:
+        print(f"Limited to first {len(file_list)} datasets")
     
     # Select detector(s)
     if method == 'all':
@@ -106,17 +113,9 @@ def run_detection(method: str, data_dir: str = ".",
     print(f"Running anomaly detection with method: {method}")
     print(f"{'='*60}\n")
     
-    processed_count = 0
     for file in file_list:
         if "Anomaly" not in str(file):
             continue
-        
-        # Check if limit reached
-        if limit is not None and processed_count >= limit:
-            print(f"\nLimit of {limit} datasets reached. Stopping.")
-            break
-        
-        processed_count += 1
             
         file_name = file.split('.')[0]
         name, test_start, data, anomaly = read_series(file, locations, zf, folder_in_zip)
@@ -182,15 +181,16 @@ def run_detection(method: str, data_dir: str = ".",
         })
         
         # Save scores to CSV
-        score_df = pd.DataFrame({
-            'index': np.arange(len(score)),
-            'score': score
-        })
-        score_file = os.path.join(scores_dir, f"{file_name}_scores.csv")
-        score_df.to_csv(score_file, index=False)
+        if save_results:
+            score_df = pd.DataFrame({
+                'index': np.arange(len(score)),
+                'score': score
+            })
+            score_file = os.path.join(scores_dir, f"{file_name}_scores.csv")
+            score_df.to_csv(score_file, index=False)
         
         # Save plot
-        if save_plots or show_plots:
+        if (save_plots and save_results) or show_plots:
             score_viz = score.copy()
             score_viz[:test_start] = np.nan
             
@@ -234,7 +234,7 @@ def run_detection(method: str, data_dir: str = ".",
             
             plt.tight_layout()
             
-            if save_plots:
+            if save_plots and save_results:
                 plot_file = os.path.join(plots_dir, f"{file_name}.png")
                 plt.savefig(plot_file, dpi=150, bbox_inches='tight')
                 
@@ -257,39 +257,41 @@ def run_detection(method: str, data_dir: str = ".",
     
     # Save predictions
     submission = pd.DataFrame({'ID': ids, 'PREDICTED': predictions})
-    predictions_file = os.path.join(run_dir, "predictions.csv")
-    submission.to_csv(predictions_file, index=False)
-    print(f"Saved predictions to: {predictions_file}")
-    
-    # Save detailed results
     results_df = pd.DataFrame(all_results)
-    results_file = os.path.join(run_dir, "detailed_results.csv")
-    results_df.to_csv(results_file, index=False)
-    print(f"Saved detailed results to: {results_file}")
     
-    # Save summary
-    summary = {
-        'method': method,
-        'timestamp': timestamp,
-        'final_score': final_score,
-        'elapsed_time_seconds': round(elapsed_time, 2),
-        'num_files': len(ids),
-        'mean_error': results_df['error'].mean() if results_df['error'].notna().any() else None
-    }
-    summary_file = os.path.join(run_dir, "summary.txt")
-    with open(summary_file, 'w') as f:
-        f.write(f"Anomaly Detection Results\n")
-        f.write(f"{'='*40}\n")
-        for key, value in summary.items():
-            f.write(f"{key}: {value}\n")
-    print(f"Saved summary to: {summary_file}")
-    
-    print(f"\nAll outputs saved to: {run_dir}/")
-    print(f"  - predictions.csv")
-    print(f"  - detailed_results.csv")
-    print(f"  - summary.txt")
-    print(f"  - scores/ ({len(ids)} files)")
-    print(f"  - plots/ ({len(ids)} files)")
+    if save_results:
+        predictions_file = os.path.join(run_dir, "predictions.csv")
+        submission.to_csv(predictions_file, index=False)
+        print(f"Saved predictions to: {predictions_file}")
+        
+        # Save detailed results
+        results_file = os.path.join(run_dir, "detailed_results.csv")
+        results_df.to_csv(results_file, index=False)
+        print(f"Saved detailed results to: {results_file}")
+        
+        # Save summary
+        summary = {
+            'method': method,
+            'timestamp': timestamp,
+            'final_score': final_score,
+            'elapsed_time_seconds': round(elapsed_time, 2),
+            'num_files': len(ids),
+            'mean_error': results_df['error'].mean() if results_df['error'].notna().any() else None
+        }
+        summary_file = os.path.join(run_dir, "summary.txt")
+        with open(summary_file, 'w') as f:
+            f.write(f"Anomaly Detection Results\n")
+            f.write(f"{'='*40}\n")
+            for key, value in summary.items():
+                f.write(f"{key}: {value}\n")
+        print(f"Saved summary to: {summary_file}")
+        
+        print(f"\nAll outputs saved to: {run_dir}/")
+        print(f"  - predictions.csv")
+        print(f"  - detailed_results.csv")
+        print(f"  - summary.txt")
+        print(f"  - scores/ ({len(ids)} files)")
+        print(f"  - plots/ ({len(ids)} files)")
     
     return submission
 
@@ -303,6 +305,7 @@ Examples:
   python main.py --method clustering
   python main.py --method all --show-plots
   python main.py --method regression --no-save-plots
+  python main.py --method clustering --limit 2 --save 0
   
 Available methods:
   clustering      - LOF, KMeans, kNN ensemble (BEST)
@@ -367,12 +370,27 @@ Outputs (saved to results/<method>_<timestamp>/):
         '--limit', '-l',
         type=int,
         default=None,
-        help='Limit processing to first N datasets (default: all)'
+        metavar='N',
+        help='Limit to first N datasets, must be 1-30 (default: all 30)'
+    )
+    
+    parser.add_argument(
+        '--save',
+        type=int,
+        choices=[0, 1],
+        default=1,
+        help='Save results: 0=False, 1=True (default: 1)'
     )
     
     args = parser.parse_args()
     
+    # Validate --limit argument
+    if args.limit is not None:
+        if args.limit < 1 or args.limit > 30:
+            parser.error("--limit must be between 1 and 30")
+    
     save_plots = args.save_plots and not args.no_save_plots
+    save_results = bool(args.save)
     
     try:
         if args.method == 'all':
@@ -387,7 +405,8 @@ Outputs (saved to results/<method>_<timestamp>/):
                     output_dir=args.output_dir,
                     save_plots=save_plots,
                     show_plots=args.show_plots,
-                    limit=args.limit
+                    limit=args.limit,
+                    save_results=save_results
                 )
                 all_submissions[method_name] = submission
             
@@ -404,7 +423,8 @@ Outputs (saved to results/<method>_<timestamp>/):
                 output_dir=args.output_dir,
                 save_plots=save_plots,
                 show_plots=args.show_plots,
-                limit=args.limit
+                limit=args.limit,
+                save_results=save_results
             )
             print("\nPredictions preview:")
             print(submission.head(10).to_string(index=False))

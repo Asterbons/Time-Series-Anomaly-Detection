@@ -31,9 +31,7 @@ class NearestNeighborDetector(BaseDetector):
         """
         score = np.zeros(len(X))
         window_size = X.shape[1]
-        train_end = test_start - window_size + 1
-        
-        # Fit kNN on training data only
+        train_end = test_start - window_size + 1        
         knn = NearestNeighbors(n_neighbors=self.n_neighbors)
         knn.fit(X[:train_end])
         
